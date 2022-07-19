@@ -16,6 +16,9 @@ def load_data(filename):
     f = h5py.File(filename,'r')
     features_wo_offset = torch.tensor(np.transpose(np.array(f.get('features_wo_offset'), dtype=np.float32)), dtype=torch.float32)
     features_w_offset = torch.tensor(np.transpose(np.array(f.get('features_w_offset'), dtype=np.float32)), dtype=torch.float32)
-    labels_gaussian_2d = torch.tensor(np.transpose(np.array(f.get('labels_gaussian_2d'), dtype=np.float32)), dtype=torch.float32)
+    temp = np.transpose(np.array(f.get('labels'), dtype=np.float32))
+    temp[:,0] = temp[:,0]/(27)
+    temp[:,1] = temp[:,1]/(12)
+    labels = torch.tensor(temp)
         
-    return features_wo_offset,features_w_offset, labels_gaussian_2d
+    return features_wo_offset,features_w_offset, labels

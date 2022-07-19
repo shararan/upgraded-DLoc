@@ -1,5 +1,6 @@
 #!/usr/bin/python
 '''
+Extra comments by Sharan
 Defines a generic wrapper class for all the network models
 Utilizes params.py to create, initiate, load and train the network.
 '''
@@ -10,6 +11,13 @@ from torch.autograd import Variable
 import os
 from Generators import *
 from utils import *
+
+'''
+Utils has code of helper functions to initialize the Encoder/Decoder block. Generators has code to create the sequential containers for Encoder/Decoders.
+The code in this file defines a wrapper class which now uses all these functions to create a network object. 
+This is the finished product using the building blocks set up in the last 2 files.
+
+'''
 
 class ModelADT():
     def name(self):
@@ -23,18 +31,19 @@ class ModelADT():
         for i in range(torch.cuda.device_count()):
             gpu_ids.append(str(i))
         print(gpu_ids)
-        self.gpu_ids = gpu_ids
-        self.isTrain = opt.isTrain
-        self.loss_weight = opt.lambda_L
-        self.reg_loss_weight = opt.lambda_reg
-        self.cross_loss_weight = opt.lambda_cross
+        self.gpu_ids = gpu_ids # gpu IDs
+        self.isTrain = opt.isTrain # training mode
+        self.loss_weight = opt.lambda_L # Loss hyperparameter
+        self.reg_loss_weight = opt.lambda_reg # Regularization hyperparameter
+        self.cross_loss_weight = opt.lambda_cross # Cross loss hyperparameter
         self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) # if self.gpu_ids else torch.device('cpu')
+        # self.device = torch.device('cpu')
         
         print(self.device)
-        self.model_name = self.opt.name
-        self.save_dir = os.path.join(self.opt.checkpoints_save_dir, self.model_name)
-        self.load_dir = os.path.join(self.opt.checkpoints_load_dir, self.model_name)
-        self.results_save_dir = opt.results_dir
+        self.model_name = self.opt.name # model name
+        self.save_dir = os.path.join(self.opt.checkpoints_save_dir, self.model_name) # model save directory
+        self.load_dir = os.path.join(self.opt.checkpoints_load_dir, self.model_name) # load directory
+        self.results_save_dir = opt.results_dir # results save directory
 
         self.loss_names = []
         self.visual_names = []
@@ -42,16 +51,24 @@ class ModelADT():
 
         self.loss_names = ['loss_criterion']
         self.visual_names = ['output']
+
+        '''
+        All the variables initialized above will come from the params.py file. The above code is setting up all the desired parameters we want the network to have
+        
+        '''
         
 
-        self.net = get_model_funct(self.opt.net)(self.opt, self.gpu_ids)
+        self.net = get_model_funct(self.opt.net)(self.opt, self.gpu_ids) # first helper function used; this is the initialized network (sequential container)
         self.net = self.net.to(self.device)
 
+        # sets the type of loss function the model is using 
         if self.isTrain:
             if self.opt.loss_type == "L2":
                 self.loss_criterion = torch.nn.MSELoss()
             elif self.opt.loss_type == "L1":
                 self.loss_criterion = torch.nn.L1Loss()
+            elif self.opt.loss_type == "SmoothL1":
+                self.loss_criterion = torch.nn.SmoothL1Loss()
             elif self.opt.loss_type == "L1_sumL2":
                 self.loss_criterion = torch.nn.L1Loss()
             elif self.opt.loss_type == "L2_sumL2":
@@ -76,7 +93,7 @@ class ModelADT():
     # load and print networks; create schedulers
     def setup(self, opt, parser=None):
         if self.isTrain:
-            self.schedulers = [get_scheduler(optimizer, opt) for optimizer in self.optimizers]
+            self.schedulers = [get_scheduler(optimizer, opt) for optimizer in self.optimizers] # learning rate schedulers
 
         if not self.isTrain or opt.continue_train:
             self.load_networks(opt.starting_epoch_count)
@@ -84,13 +101,13 @@ class ModelADT():
 
     # make models eval mode during test time
     def eval(self):
-        self.net.eval()
+        self.net.eval() # sets the sequential container to eval mode
 
-    # used in test time, wrapping `forward` in no_grad() so we don't save
+    # used in test time, wrapping `forward` in no_grad() so we don't save, reducing memory consumption
     # intermediate steps for backprop
     def test(self):
-        with torch.no_grad():
-            self.forward()
+        with torch.no_grad(): # reduces memory consumption
+            self.forward() # run forward prop on the model
     
     def save_outputs(self):
         if not os.path.exists(self.results_save_dir):
@@ -158,7 +175,7 @@ class ModelADT():
         """
         epoch (int/str): epoch index / "best" / "latest"
         """
-        assert isinstance(epoch,int) or epoch=="best" or epoch=="latest"
+        assert isinstance(epoch,int) or epoch=="best" or epoch=="latest" # continue only if epoch is int or one of these strings
         load_filename = f'{epoch}_net_{self.model_name}.pth'
 
         if load_dir:
@@ -218,15 +235,16 @@ class ModelADT():
         if convert:
             self.input, self.target = Variable(self.input), Variable(self.target)
 
-        self.input = self.input.to(self.device)
-        self.target = self.target.to(self.device)
+        self.input = self.input.to(self.device) # network input
+        self.target = self.target.to(self.device) # target data
 
     # Define the forward pass to compute loss
     def forward(self):
-        self.output = self.net(self.input)
+        self.output = self.net(self.input) # network output object 
         if self.opt.loss_type != "NoLoss":
-            self.loss = self.loss_weight*self.loss_criterion(self.output, self.target)
+            self.loss = self.loss_weight*self.loss_criterion(self.output, self.target) # plain old loss; computed on the network output object. Can run backprop on this 
 
+            # following lines compute the regularization loss(+ the cross loss if specified) and adds it to the total loss 
             if self.opt.loss_type == "L1_sumL2" or self.opt.loss_type == "L2_sumL2":
                 self.loss += self.reg_loss_weight*torch.norm(self.output).div(self.output.numel())
                 self.reg_loss = self.reg_loss_weight*torch.norm(self.output).div(self.output.numel())
@@ -242,11 +260,13 @@ class ModelADT():
             if self.opt.loss_type == "L1_offset_loss" or self.opt.loss_type == "L2_offset_loss":
                 self.loss += self.reg_loss_weight*torch.norm(self.output).div(self.output.numel())
 
+            # self.loss is now the total loss 
+
     def backward(self):
-        self.loss.backward(retain_graph=True)
+        self.loss.backward(retain_graph=True) # back prop (total loss computed above) 
     
     def optimize_parameters(self):
-        self.forward()
-        self.backward()  
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+        self.forward() # forward pass
+        self.backward() # computes gradients
+        self.optimizer.step() # updates parameters
+        self.optimizer.zero_grad() # set all gradients to zero 

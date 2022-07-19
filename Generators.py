@@ -11,7 +11,9 @@ You can add your costum network building blocks here to test various other archi
 '''
 import torch
 import torch.nn as nn
+import numpy as np
 import functools
+from params import opt_exp
 
 
 # Tha base Encoder function defined for the DLoc's Encoder
@@ -54,7 +56,6 @@ class ResnetEncoder(nn.Module):
     def forward(self, input):
         return self.model(input)
 
-
 # Tha base Decoder function defined for the DLoc's Decoders.
 # Depending upon the ModelADT wraper around the decoder,
 # the decoder would either be a Location Decoder or a Consistency decoder.
@@ -82,25 +83,34 @@ class ResnetDecoder(nn.Module):
                 continue
             model += [ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
 
-        for i in range(n_downsampling):
-            mult = 2**(n_downsampling - i)
-            model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
-                                         kernel_size=3, stride=2,
-                                         padding=1, output_padding=0,
-                                         bias=use_bias),
-                      norm_layer(int(ngf * mult / 2)),
-                      nn.ReLU(True)]
-#         model += [nn.ReflectionPad2d(3)]
-        model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=[3,3])]
-        model += [nn.Sigmoid()]
+        if n_blocks == 9:
+            model += [nn.Conv2d(ngf * mult, 32, kernel_size=3,
+                                stride=1, padding=1, bias=use_bias),
+                      nn.ReLU()]
+            model += [nn.Flatten()]
+            linear_shape = int(np.prod((opt_exp.batch_size, 32, 41, 91))/opt_exp.batch_size)
+            model += [nn.Linear(linear_shape, 256), nn.ReLU()]
+            model += [nn.Linear(256, 256), nn.ReLU()]
+            model += [nn.Linear(256, 2)]
+            model += [nn.Tanh()]
+        else:
+            for i in range(n_downsampling):
+                mult = 2**(n_downsampling - i)
+                model += [nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2),
+                                            kernel_size=3, stride=2,
+                                            padding=1, output_padding=0,
+                                            bias=use_bias),
+                        norm_layer(int(ngf * mult / 2)),
+                        nn.ReLU(True)]
+            # model += [nn.ReflectionPad2d(3)]
+            model += [nn.Conv2d(ngf, output_nc, kernel_size=7, padding=[3,3])]
+            model += [nn.Sigmoid()]
 
         self.model = nn.Sequential(*model)
 
     def forward(self, input):
         #print("decoder.input = ", input.shape)
         return self.model(input)
-# In[3]:
-
 
 # Define a resnet block
 class ResnetBlock(nn.Module):

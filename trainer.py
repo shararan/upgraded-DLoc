@@ -1,10 +1,12 @@
 '''
+Extra comments by Sharan
 Scripts for the training and testing functions
 train() function is called for training the network
 test() function is called to evaluate the network
 Both the function logs and saves the results in the files 
 as mentioned in the params.py file
 '''
+
 import warnings
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",category=FutureWarning)
@@ -20,7 +22,7 @@ def train(model, train_loader, test_loader):
     """Traning pipeline
 
     Args:
-        model (torch.module): pytorch model
+        model (torch.module): pytorch model, which was defined in joint_model.py
         train_loader (torch.dataloader): dataloader
         test_loader (torch.dataloader): dataloader
     """
@@ -38,18 +40,19 @@ def train(model, train_loader, test_loader):
         epoch_start_time = time.time()
         epoch_loss = 0
         epoch_offset_loss = 0
-        error =[]
+        error = []
 
         for i, data in enumerate(train_loader):
-            total_steps += model.opt.batch_size
+            total_steps += model.opt.batch_size # total steps count
             if opt_exp.n_decoders == 2:
                 model.set_input(data[input_index], data[output_index], data[offset_output_index], shuffle_channel=False)
             elif opt_exp.n_decoders == 1:
                 model.set_input(data[input_index], data[output_index], shuffle_channel=False)
-            model.optimize_parameters()
+            # set_input defined in modelADT takes input and label and adds them to the model object, for training 
+            model.optimize_parameters() # optimization step
             dec_outputs = model.decoder.output
             # print(f"dec_outputs size is : {dec_outputs.shape}")
-            error.extend(localization_error(dec_outputs.data.cpu().numpy(),data[output_index].cpu().numpy(),scale=0.1))
+            error.extend(localization_error(dec_outputs.data.cpu().numpy(),data[output_index].cpu().numpy(),scale=1))
 
             write_log([str(model.decoder.loss.item())], model.decoder.model_name, log_dir=model.decoder.opt.log_dir, log_type='loss')
             if opt_exp.n_decoders == 2:
@@ -81,28 +84,29 @@ def train(model, train_loader, test_loader):
             min_eval_loss, median_error = test(model, test_loader, save_output=False)
         else:
             new_eval_loss, new_med_error = test(model, test_loader, save_output=False)
-            if (median_error>=new_med_error):
+            if (median_error>=new_med_error): # if previous error is smaller than current error
                 stopping_count = stopping_count+1
                 median_error = new_med_error
 
         # generated_outputs = temp_generator_outputs
-        if epoch % model.encoder.opt.save_epoch_freq == 0:
+        if epoch % model.encoder.opt.save_epoch_freq == 0: # save the model every 'save_epoch_freq' epochs
             print('saving the model at the end of epoch %d, iters %d' %(epoch, total_steps))
-            model.save_networks('latest')
+            model.save_networks('latest') # type of epoch
             model.save_networks(epoch)
             if (stopping_count==2):
-                print('Saving best model at %d epoch' %(epoch))
+                write_log([str(epoch)], model.decoder.model_name, log_dir=model.decoder.opt.log_dir, log_type='best_epoch_no')
+                print('Saving best model at %d epoch' %(epoch)) # if error increases twice then save epoch as best epoch
                 model.save_networks('best')
                 stopping_count=0
 
         print('End of epoch %d / %d \t Time Taken: %d sec' %
               (epoch, model.decoder.opt.niter + model.decoder.opt.niter_decay, time.time() - epoch_start_time))
-        model.decoder.update_learning_rate()
+        model.decoder.update_learning_rate() # anneal the learning rate
         model.encoder.update_learning_rate()
         if opt_exp.n_decoders == 2:
             model.offset_decoder.update_learning_rate()
 
-
+# very similar to train code
 def test(model, test_loader, save_output=True, save_name="decoder_test_result", save_dir="", log=True):
     """Test and evaluation pipeline
 
@@ -133,9 +137,9 @@ def test(model, test_loader, save_output=True, save_name="decoder_test_result", 
     error =[]
     for i, data in enumerate(test_loader):
         if opt_exp.n_decoders == 2:
-                model.set_input(data[input_index], data[output_index], data[offset_output_index], shuffle_channel=False)
-            elif opt_exp.n_decoders == 1:
-                model.set_input(data[input_index], data[output_index], shuffle_channel=False)
+            model.set_input(data[input_index], data[output_index], data[offset_output_index], shuffle_channel=False)
+        elif opt_exp.n_decoders == 1:
+            model.set_input(data[input_index], data[output_index], shuffle_channel=False)
         model.test()
 
         # get model outputs
@@ -146,7 +150,7 @@ def test(model, test_loader, save_output=True, save_name="decoder_test_result", 
         generated_outputs.extend(gen_outputs.data.cpu().numpy())
         if opt_exp.n_decoders == 2:
             offset_outputs.extend(off_outputs.data.cpu().numpy())
-        error.extend(localization_error(gen_outputs.data.cpu().numpy(),data[output_index].cpu().numpy(),scale=0.1))
+        error.extend(localization_error(gen_outputs.data.cpu().numpy(),data[output_index].cpu().numpy(),scale=1))
         total_loss += model.decoder.loss.item()
         if opt_exp.n_decoders == 2:
             total_offset_loss += model.offset_decoder.loss.item()

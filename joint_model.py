@@ -1,5 +1,6 @@
 #!/usr/bin/python
 '''
+Extra comments by Sharan
 Defines a PyTorch graph for forward and backward propogation
 within the network encoders and decoders.
 '''
@@ -11,21 +12,24 @@ from params import *
 
 
 '''
+ModelADT creates an Encoder/Decoder object. The code in this file joins the encoder/decoder(s) in a single object. This will be used by trainer.py
 Class Definition for 1 Encoder and 1 Decoder joint model
 '''
 class Enc_Dec_Network():
 
+    # this is the function joining the encoder and decoder into one model
     def initialize(self, opt, encoder, decoder, frozen_dec=False, frozen_enc=False, gpu_ids='1'):
         self.opt = opt
         self.isTrain = opt.isTrain
-        self.encoder = encoder
-        self.decoder = decoder
+        self.encoder = encoder # the encoder block (modelADT object)
+        self.decoder = decoder # the decoder block (modelADT object)
         self.frozen_dec = frozen_dec
         self.frozen_enc = frozen_enc
         self.device = torch.device('cuda:{}'.format(gpu_ids[0])) # if self.gpu_ids else torch.device('cpu')
         # self.encoder.net = encoder.net.to(self.device)
         # self.decoder.net = decoder.net.to(self.device)
 
+    # the rest of the functions are just using the functions written in modelADT, on both the encoder and decoder
     def set_input(self, input, target, convert_enc=True, shuffle_channel=True):
         self.input = input.to(self.device)
         self.target = target.to(self.device)
@@ -87,6 +91,7 @@ class Enc_2Dec_Network():
         self.frozen_dec = frozen_dec
         self.frozen_enc = frozen_enc
         self.device = torch.device('cuda:{}'.format(gpu_ids[0])) # if self.gpu_ids else torch.device('cpu')
+        # self.device = torch.device('cpu')
         # self.encoder.net = encoder.net.to(self.device)
         # self.decoder.net = decoder.net.to(self.device)
         self.results_save_dir = opt.results_dir
