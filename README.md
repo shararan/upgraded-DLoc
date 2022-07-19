@@ -18,7 +18,7 @@ pip install -r requirements.txt
 To train the model(s) in the paper and evaluate them, run this command:
 
 ```train_test
-python train_and_test.py
+python train_and_test_sharan.py
 ```
 
 The file automatically imports the parameters from [params.py](params.py).
