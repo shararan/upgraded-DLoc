@@ -136,10 +136,10 @@ def localization_error(output_predictions,input_labels,scale=1): # computes the 
     output_predictions: (N,1,H,W), model prediction 
     input_labels: (N,1,H,W), ground truth target
     """
-    input_labels[:,0] *= opt_exp.xscale
-    output_predictions[:,0] *= opt_exp.xscale
-    input_labels[:,1] *= opt_exp.yscale
-    output_predictions[:,1] *= opt_exp.yscale
+    input_labels[:,0] *= opt_exp.norm_factor
+    output_predictions[:,0] *= opt_exp.norm_factor
+    input_labels[:,1] *= opt_exp.norm_factor
+    output_predictions[:,1] *= opt_exp.norm_factor
 
     image_size = output_predictions.shape
     error = np.zeros(image_size[0])

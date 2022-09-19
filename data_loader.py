@@ -9,6 +9,7 @@ import torch
 import h5py
 import scipy.io
 import numpy as np
+from params import *
 
 def load_data(filename):
     print('Loading '+filename)
@@ -17,8 +18,8 @@ def load_data(filename):
     features_wo_offset = torch.tensor(np.transpose(np.array(f.get('features_wo_offset'), dtype=np.float32)), dtype=torch.float32)
     features_w_offset = torch.tensor(np.transpose(np.array(f.get('features_w_offset'), dtype=np.float32)), dtype=torch.float32)
     temp = np.transpose(np.array(f.get('labels'), dtype=np.float32))
-    temp[:,0] = temp[:,0]/(27)
-    temp[:,1] = temp[:,1]/(12)
+    temp[:,0] = temp[:,0]/(opt_exp.norm_factor)
+    temp[:,1] = temp[:,1]/(opt_exp.norm_factor)
     labels = torch.tensor(temp)
         
     return features_wo_offset,features_w_offset, labels

@@ -17,6 +17,7 @@ opt_exp.input_shape = (8,16,21,46)
 opt_exp.batch_size = 8
 opt_exp.xscale = 27
 opt_exp.yscale = 12
+opt_exp.norm_factor = max(opt_exp.xscale, opt_exp.yscale)
 opt_exp.ds_step_trn = 1
 opt_exp.ds_step_tst = 1
 opt_exp.weight_decay = 1e-5
@@ -95,7 +96,7 @@ opt_decoder.beta1 = 0.5 #type=float, default=0.5, help='momentum term of adam')
 opt_decoder.lr = opt_encoder.lr  #type=float, default=0.0002, help='initial learning rate for adam')
 opt_decoder.lr_policy = 'step' #type=str, default='lambda', help='learning rate policy: lambda|step|plateau|cosine')
 opt_decoder.lr_decay_iters = 20 #type=int, default=50, help='multiply by a gamma every lr_decay_iters iterations')
-opt_decoder.lambda_L = 1 # weightage given to the Generator
+opt_decoder.lambda_L = opt_exp.norm_factor # weightage given to the Generator
 opt_decoder.lambda_cross = 1e-5
 opt_decoder.lambda_reg = 5e-4
 opt_decoder.weight_decay = opt_decoder.parent_exp.weight_decay
